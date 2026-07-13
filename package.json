@@ -1,0 +1,24 @@
+{
+  "name": "medical-device-api",
+  "version": "1.0.0",
+  "description": "Medical Device Inventory API built with Node.js and Express",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "node",
+    "express",
+    "medical",
+    "device",
+    "api",
+    "inventory"
+  ],
+  "author": "Kevin Kirui",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "express": "^5.2.1"
+  }
+}
