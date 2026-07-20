@@ -242,13 +242,9 @@ This query returns only medical devices that are currently marked as active.
 
 ## Database Screenshot
 
-Add a screenshot of **DB Browser for SQLite** showing the `devices` table.
+The screenshot below shows the **devices** table opened in **DB Browser for SQLite** after completing the SQLite migration.
 
-Example:
-
-```
-[docs/database-browser.png](https://drive.google.com/file/d/1sjwZ51IFIfMuE5ZoHQKJCNgZZ12796ci/view?usp=sharing)
-```
+![DB Browser for SQLite showing the devices table](docs/database-browser.png)
 
 ---
 
