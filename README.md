@@ -84,7 +84,7 @@ This allows anyone cloning the repository to start the project without manually 
 Clone the repository:
 
 ```bash
-git clone <your-github-repository-url>
+git clone https://github.com/arapkirui513-hub/medical-device-inventory-api.git
 ```
 
 Navigate into the project:
