@@ -53,17 +53,52 @@ function addDevice(device) {
 }
 
 // ---------- UPDATE ----------
-// Stage 3
 
 function updateDevice(id, updates) {
-  throw new Error("Stage 3: updateDevice() not implemented yet");
+  // Check whether the device exists
+  const existingDevice = getDeviceById(id);
+
+  if (!existingDevice) {
+    return null;
+  }
+
+  // Merge existing values with incoming updates
+  const updatedDevice = {
+    ...existingDevice,
+    ...updates,
+  };
+
+  db.prepare(`
+    UPDATE devices
+    SET
+      name = ?,
+      model = ?,
+      manufacturer = ?,
+      location = ?,
+      status = ?,
+      lastServiceDate = ?
+    WHERE id = ?
+  `).run(
+    updatedDevice.name,
+    updatedDevice.model,
+    updatedDevice.manufacturer,
+    updatedDevice.location,
+    updatedDevice.status,
+    updatedDevice.lastServiceDate,
+    id
+  );
+
+  return getDeviceById(id);
 }
 
 // ---------- DELETE ----------
-// Stage 3
 
 function deleteDevice(id) {
-  throw new Error("Stage 3: deleteDevice() not implemented yet");
+  const result = db
+    .prepare("DELETE FROM devices WHERE id = ?")
+    .run(id);
+
+  return result.changes > 0;
 }
 
 module.exports = {

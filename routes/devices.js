@@ -66,6 +66,22 @@ router.post("/", (req, res, next) => {
   res.status(201).json(createdDevice);
 });
 
+// PUT /devices/:id – update a device
+router.put("/:id", (req, res, next) => {
+  const id = parseInt(req.params.id, 10);
+  const updates = req.body;
+
+  const updatedDevice = updateDevice(id, updates);
+
+  if (!updatedDevice) {
+    const error = new Error("Device not found");
+    error.status = 404;
+    return next(error);
+  }
+
+  res.json(updatedDevice);
+});
+
 // DELETE /devices/:id – remove a device
 router.delete("/:id", (req, res, next) => {
   const id = parseInt(req.params.id, 10);
