@@ -44,29 +44,6 @@ Unlike the original implementation, which stored devices in memory, this version
 
 ---
 
-## Database Location
-
-The database is automatically created the first time the application runs.
-
-```
-devices.db
-```
-
-Project structure:
-
-```
-medical-device-inventory-api/
-│
-├── devices.db
-├── server.js
-├── package.json
-└── ...
-```
-
-> **Note:** `devices.db` is excluded from Git using `.gitignore` because it is automatically generated.
-
----
-
 ## Database Initialization
 
 When the server starts it automatically:
@@ -76,6 +53,8 @@ When the server starts it automatically:
 - Inserts three sample medical devices only when the table is empty
 
 This allows anyone cloning the repository to start the project without manually creating a database.
+
+> **Note:** The generated `devices.db` file is excluded from Git using `.gitignore` because it is created automatically when the application starts.
 
 ---
 
@@ -214,32 +193,6 @@ Example:
 
 ---
 
-## SQLite CRUD Operations
-
-| Operation | SQL Statement |
-|------------|---------------|
-| Read All | `SELECT * FROM devices` |
-| Read One | `SELECT * FROM devices WHERE id = ?` |
-| Create | `INSERT INTO devices (...) VALUES (...)` |
-| Update | `UPDATE devices SET ... WHERE id = ?` |
-| Delete | `DELETE FROM devices WHERE id = ?` |
-
----
-
-## Example SQL Query
-
-The following SQL query was executed during development:
-
-```sql
-SELECT *
-FROM devices
-WHERE status = 'active';
-```
-
-This query returns only medical devices that are currently marked as active.
-
----
-
 ## Database Screenshot
 
 The screenshot below shows the **devices** table opened in **DB Browser for SQLite** after completing the SQLite migration.
@@ -257,6 +210,9 @@ medical-device-inventory-api/
 │   ├── db.js
 │   └── devices.js
 │
+├── docs/
+│   └── database-browser.png
+│
 ├── middleware/
 │   ├── logger.js
 │   └── errorHandler.js
@@ -264,11 +220,11 @@ medical-device-inventory-api/
 ├── routes/
 │   └── devices.js
 │
-├── devices.db
 ├── .gitignore
-├── server.js
 ├── package.json
-└── README.md
+├── package-lock.json
+├── README.md
+└── server.js
 ```
 
 ---
@@ -311,33 +267,66 @@ Express API
 SQLite Database
 ```
 
-This demonstrates one of the key backend engineering principles:
+This demonstrates an important backend engineering principle:
 
 > The API defines **what** the application does, while the database defines **where** the application stores its data.
 
 ---
 
-## Design Decisions
+## What Changed During the Migration
 
-### Why SQLite?
+The REST API remained the same throughout the migration. Existing clients continued using the same endpoints and request formats.
 
-SQLite provides persistent storage without requiring a separate database server, making it ideal for lightweight backend applications and learning SQL.
+The main change was in the persistence layer:
 
-### Why AUTOINCREMENT?
+- Before the migration, devices were stored in an in-memory JavaScript array.
+- After the migration, devices are stored in a SQLite database.
 
-The database owns identifier generation using:
+During development, an important issue was discovered in the original POST implementation. The route generated new IDs by looking at the last item in the in-memory array. After migrating to SQLite, this approach became incorrect because the database is responsible for generating primary keys.
+
+The solution was to let SQLite assign the ID using:
 
 ```sql
 INTEGER PRIMARY KEY AUTOINCREMENT
 ```
 
-This guarantees unique IDs without requiring the application to calculate them manually.
+The API now inserts a new record and returns the row created by the database. This prevents ID reuse after deletions and keeps identifier generation consistent with the database schema.
+
+This migration reinforced an important backend engineering principle:
+
+> Business logic belongs in the application layer. Persistent identifiers belong to the database.
+
+---
+
+## Design Decisions
+
+### Why AUTOINCREMENT?
+
+SQLite generates identifiers using:
+
+```sql
+INTEGER PRIMARY KEY AUTOINCREMENT
+```
+
+This guarantees that every device receives a unique identifier, even if previous records are deleted. The application no longer calculates IDs manually.
 
 ### Why Validation Happens in Express
 
-Business rules such as required fields and default values belong to the API layer.
+Required fields and default values are application rules.
 
-The database stores validated data but does not decide what values should be assigned when the client omits them.
+The Express route validates incoming requests and supplies default values when needed. SQLite simply stores the validated data it receives without interpreting or inventing business meaning.
+
+---
+
+## SQL Queries Used During Development
+
+The following queries were used to verify that the SQLite database behaved correctly during development.
+
+| Question | SQL Query | Why SQL Was Appropriate | Design Decision |
+|----------|-----------|-------------------------|-----------------|
+| Are all seeded and newly created devices stored correctly? | `SELECT * FROM devices;` | Retrieves every record exactly as stored in the database. | Confirmed that CRUD operations were persisting data rather than using temporary memory. |
+| How many devices currently exist? | `SELECT COUNT(*) AS total_devices FROM devices;` | SQL aggregation is more efficient than counting records in application code. | Demonstrated that summary calculations belong in the database. |
+| Can existing records be updated successfully? | `UPDATE devices SET status = 'maintenance' WHERE id = 2;` | Directly modifies the stored record while preserving its identity. | Verified that updates modify existing rows instead of creating new ones. |
 
 ---
 
@@ -353,49 +342,39 @@ The database stores validated data but does not decide what values should be ass
 - SQLite integration
 - SQL CRUD operations
 - Automatic database creation
+- Automatic table creation
+- Automatic sample data seeding
 - Persistent data storage
+- Separation of application logic from persistence
 
 ---
 
 ## Testing
 
-The API was tested using:
+The project was tested using:
 
 - Thunder Client
 - DB Browser for SQLite
 
-### Tested Endpoints
+### REST API Tests
 
-- GET /
-- GET /devices
-- GET /devices/1
-- POST /devices
-- PUT /devices/1
-- DELETE /devices/1
+- ✅ GET /
+- ✅ GET /devices
+- ✅ GET /devices/:id
+- ✅ POST /devices
+- ✅ PUT /devices/:id
+- ✅ DELETE /devices/:id
 
-### SQL Queries Executed
+### Database Verification
 
-```sql
-SELECT * FROM devices;
-```
+The following checks were performed in DB Browser for SQLite:
 
-```sql
-SELECT * FROM devices WHERE status = 'active';
-```
-
-```sql
-SELECT COUNT(*) AS total_devices FROM devices;
-```
-
-```sql
-UPDATE devices
-SET status = 'maintenance';
-```
-
-```sql
-DELETE FROM devices
-WHERE status = 'maintenance';
-```
+- Verified that the database and table were created automatically.
+- Confirmed that sample devices were seeded only once.
+- Verified that newly created devices persisted after restarting the server.
+- Confirmed that updates modified existing records.
+- Confirmed that deleted records were removed permanently.
+- Verified that SQLite continued generating unique IDs after deletions.
 
 ---
 
@@ -403,4 +382,10 @@ WHERE status = 'maintenance';
 
 This project demonstrates how an application can migrate from an in-memory data store to a persistent SQLite database without changing its REST API.
 
-The API contract remained unchanged while the persistence layer evolved, illustrating the separation of concerns between application logic and data storage.
+The migration reinforced several backend engineering principles:
+
+- APIs define application behavior, while databases define persistence.
+- Business validation belongs in the application layer.
+- Identifier generation belongs in the database.
+- Persistence should preserve facts without interpreting business meaning.
+- Separating application logic from storage allows the persistence layer to change without affecting API consumers.
