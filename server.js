@@ -1,8 +1,11 @@
 // server.js
-const express = require('express');
-const devicesRouter = require('./routes/devices');
-const logger = require('./middleware/logger');
-const errorHandler = require('./middleware/errorHandler');
+const express = require("express");
+const devicesRouter = require("./routes/devices");
+const logger = require("./middleware/logger");
+const errorHandler = require("./middleware/errorHandler");
+
+// Initialize the SQLite database
+require("./data/db");
 
 const app = express();
 
