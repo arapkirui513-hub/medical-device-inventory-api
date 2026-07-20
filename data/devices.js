@@ -11,10 +11,7 @@
 
 const db = require("./db");
 
-// Temporary in-memory array used only until Stages 2 and 3
-let devices = [];
-
-// ---------- READ (SQLite) ----------
+// ---------- READ ----------
 
 function getAllDevices() {
   return db.prepare("SELECT * FROM devices").all();
@@ -24,38 +21,49 @@ function getDeviceById(id) {
   return db.prepare("SELECT * FROM devices WHERE id = ?").get(id);
 }
 
-// ---------- WRITE (temporary) ----------
+// ---------- CREATE ----------
 
 function addDevice(device) {
-  devices.push(device);
-  return device;
+  const insert = db.prepare(`
+    INSERT INTO devices (
+      name,
+      model,
+      manufacturer,
+      location,
+      status,
+      lastServiceDate
+    )
+    VALUES (?, ?, ?, ?, ?, ?)
+  `);
+
+  const result = insert.run(
+    device.name,
+    device.model,
+    device.manufacturer,
+    device.location,
+    device.status,
+    device.lastServiceDate
+  );
+
+  // Return the row exactly as SQLite stored it,
+  // including the database-generated ID.
+  return db
+    .prepare("SELECT * FROM devices WHERE id = ?")
+    .get(result.lastInsertRowid);
 }
+
+// ---------- UPDATE ----------
+// Stage 3
 
 function updateDevice(id, updates) {
-  const index = devices.findIndex(device => device.id === id);
-
-  if (index === -1) {
-    return null;
-  }
-
-  devices[index] = {
-    ...devices[index],
-    ...updates
-  };
-
-  return devices[index];
+  throw new Error("Stage 3: updateDevice() not implemented yet");
 }
 
+// ---------- DELETE ----------
+// Stage 3
+
 function deleteDevice(id) {
-  const index = devices.findIndex(device => device.id === id);
-
-  if (index === -1) {
-    return false;
-  }
-
-  devices.splice(index, 1);
-
-  return true;
+  throw new Error("Stage 3: deleteDevice() not implemented yet");
 }
 
 module.exports = {
@@ -63,5 +71,5 @@ module.exports = {
   getDeviceById,
   addDevice,
   updateDevice,
-  deleteDevice
+  deleteDevice,
 };
