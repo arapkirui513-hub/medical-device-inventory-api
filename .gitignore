@@ -1,3 +1,6 @@
 node_modules/
 devices.db
+devices.db-journal
+devices.db-shm
+devices.db-wal
 .env
