@@ -1,45 +1,30 @@
-// data/devices.js
+/**
+ * Data Layer
+ *
+ * Responsibilities:
+ * - Execute SQL queries
+ * - Persist and retrieve medical devices
+ *
+ * This layer owns persistence only.
+ * It does not contain HTTP logic or business rules.
+ */
 
-// Simple in-memory list of medical devices
-// In a real app, this would come from a database.
-let devices = [
-  {
-    id: 1,
-    name: 'Infusion Pump',
-    model: 'IP-3000',
-    manufacturer: 'MedEquip Ltd',
-    location: 'ICU Ward 3',
-    status: 'active',
-    lastServiceDate: '2026-06-01'
-  },
-  {
-    id: 2,
-    name: 'Ventilator',
-    model: 'VentX-500',
-    manufacturer: 'HealthTech Systems',
-    location: 'Critical Care Unit',
-    status: 'maintenance',
-    lastServiceDate: '2026-05-20'
-  },
-  {
-    id: 3,
-    name: 'Patient Monitor',
-    model: 'PM-12',
-    manufacturer: 'BioMed Devices',
-    location: 'Surgical Ward',
-    status: 'active',
-    lastServiceDate: '2026-04-15'
-  }
-];
+const db = require("./db");
 
-// Helper functions to interact with the array
+// Temporary in-memory array used only until Stages 2 and 3
+let devices = [];
+
+// ---------- READ (SQLite) ----------
+
 function getAllDevices() {
-  return devices;
+  return db.prepare("SELECT * FROM devices").all();
 }
 
 function getDeviceById(id) {
-  return devices.find(device => device.id === id);
+  return db.prepare("SELECT * FROM devices WHERE id = ?").get(id);
 }
+
+// ---------- WRITE (temporary) ----------
 
 function addDevice(device) {
   devices.push(device);
@@ -48,19 +33,28 @@ function addDevice(device) {
 
 function updateDevice(id, updates) {
   const index = devices.findIndex(device => device.id === id);
+
   if (index === -1) {
     return null;
   }
-  devices[index] = { ...devices[index], ...updates };
+
+  devices[index] = {
+    ...devices[index],
+    ...updates
+  };
+
   return devices[index];
 }
 
 function deleteDevice(id) {
   const index = devices.findIndex(device => device.id === id);
+
   if (index === -1) {
     return false;
   }
+
   devices.splice(index, 1);
+
   return true;
 }
 
