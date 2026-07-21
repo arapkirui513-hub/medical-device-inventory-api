@@ -4,56 +4,103 @@
 
 ## Objective
 
-The final stage of this project compared my hand-built SQLite migration against an AI-generated implementation.
+The final stage compared my hand-built SQLite migration against an independently AI-generated implementation of the same migration to evaluate whether an AI would arrive at similar architectural decisions without being shown my implementation or the issues I discovered while building it.
 
-The goal was not to replace my implementation, but to evaluate whether an AI would independently arrive at similar engineering decisions while preserving the existing REST API.
+---
 
-To make the comparison fair, the AI was given a specification describing the required API behavior rather than my implementation. This allowed architectural decisions such as SQL structure, helper functions, update strategy, and internal organization to emerge naturally.
+## Prompt
+
+The AI was given a specification describing the required REST API behavior but was not shown my source code, README, or implementation history.
+
+The prompt specified:
+
+- Express.js using the `better-sqlite3` library.
+- A SQLite `devices` table containing:
+  - `id`
+  - `name`
+  - `model`
+  - `manufacturer`
+  - `location`
+  - `status`
+  - `lastServiceDate`
+- Automatic table creation.
+- Seeding exactly three devices only when the table is empty.
+- Preservation of the existing REST API.
+- Parameterized SQL queries.
+- Persistent storage across server restarts.
+- Complete implementations of:
+  - `data/db.js`
+  - `data/devices.js`
+  - `routes/devices.js`
+
+Two implementation decisions were intentionally left unspecified:
+
+- how identifiers should behave after a deletion
+- where default-value logic should live
+
+These were intentionally omitted so the AI could make its own engineering decisions rather than simply following instructions that mirrored my implementation.
 
 ---
 
 ## Evaluation Method
 
-The AI implementation was generated using a fresh conversation and stored separately from my working project.
+The AI-generated files were stored inside the `ai-version/` directory and tested using a completely separate copy of the project. This ensured the AI implementation could be evaluated without modifying my working solution.
 
-The generated files were:
+During the comparison I first inspected the AI-generated source code to identify implementation choices and form specific predictions. I then confirmed those predictions through runtime testing under matched conditions.
 
-- `data/db.js`
-- `data/devices.js`
-- `routes/devices.js`
-
-The AI implementation was tested in a separate copy of the project to avoid modifying my working solution.
-
-Both implementations were evaluated using the same behavioral tests before comparing the source code.
+Both implementations were tested using the same initial database state consisting of three seeded devices (IDs 1–3).
 
 ---
 
-## Behavioral Tests
+## Verified Finding 1 – Identifier Reuse After Deletion
 
-The AI implementation successfully passed every functional test.
+Starting from a freshly seeded database, I deleted the highest numbered device and immediately created another.
 
-| Test | Result |
-|-------|--------|
-| Database created automatically | ✅ |
-| Table created automatically | ✅ |
-| Seed data inserted only when the table was empty | ✅ |
-| GET /devices | ✅ |
-| GET /devices/:id | ✅ |
-| POST /devices | ✅ |
-| PUT partial update | ✅ |
-| DELETE /devices/:id | ✅ |
-| POST validation (400) | ✅ |
-| Unknown device (404) | ✅ |
-| Data persisted after restart | ✅ |
-| IDs continued increasing after deletion | ✅ |
+| Implementation | Setup | Result |
+|----------------|-------|--------|
+| Hand-built | Deleted ID 3 | New device created with **ID 4** |
+| AI-generated | Deleted ID 3 | New device created with **ID 4** |
 
-After deleting a device with ID 10, creating another device produced ID 11, confirming that SQLite's `AUTOINCREMENT` behavior was preserved.
+Both implementations used `INTEGER PRIMARY KEY AUTOINCREMENT`, resulting in the same identifier behavior after deletion.
+
+The prompt never required `AUTOINCREMENT`, so the AI independently chose the same strategy that I had already implemented during the migration.
+
+---
+
+## Verified Finding 2 – Malformed Identifier Handling
+
+Neither the assignment nor my prompt specified how invalid route parameters should be handled.
+
+Testing:
+
+```
+GET /devices/abc
+```
+
+produced different behavior.
+
+| Implementation | Status | Response |
+|----------------|--------|----------|
+| Hand-built | **404** | Device not found |
+| AI-generated | **400** | Invalid device id |
+
+My implementation allows the request to reach the data layer, where no matching record is found.
+
+The AI implementation introduced a reusable `parseDeviceId()` helper that validates route parameters before querying the database.
+
+Both behaviors are reasonable depending on the API design goals. Returning **404** treats the request as referencing a resource that does not exist, while returning **400** treats the request itself as malformed because the identifier is not valid.
+
+Since the prompt did not specify this case, the difference reflects an independent design decision rather than an implementation error. This became the clearest example in the project of two implementations satisfying the same stated contract while making different decisions about an unspecified edge case.
+
+---
+
+The two findings above were confirmed through direct runtime testing of both implementations under matched conditions. The code comparison below identifies the specific implementation choices responsible for each observed behavior.
 
 ---
 
 ## Code Comparison
 
-After confirming identical runtime behavior, I compared the AI implementation with my own using:
+I compared the implementations using:
 
 ```bash
 git diff --no-index data/db.js ai-version/db.js
@@ -63,58 +110,32 @@ git diff --no-index data/devices.js ai-version/devices.js
 git diff --no-index routes/devices.js ai-version/routes-devices.js
 ```
 
-This comparison highlighted several architectural differences despite both implementations producing the same API behavior.
+The comparison revealed several architectural differences despite both implementations producing the same external API behavior.
 
----
+### AI implementation
 
-## What the AI Did Better
+The AI implementation introduced several improvements that were not explicitly required:
 
-The AI introduced several improvements that were not required by the assignment but improved maintainability and scalability.
+- Used `path.join(__dirname, "..", "devices.db")` for a platform-independent database path.
+- Enabled SQLite foreign-key enforcement using `PRAGMA foreign_keys = ON`.
+- Added `ORDER BY id` to guarantee deterministic query ordering.
+- Added an `allowedFields` whitelist before generating update SQL.
+- Dynamically generated `UPDATE` statements so only supplied fields were written.
+- Centralized route parameter validation using a reusable helper function.
 
-These included:
+Worth noting that enabling foreign keys has no practical effect in this project because the schema contains only a single table without foreign-key relationships.
 
-- Using `path.join()` to create a platform-independent database path.
-- Enabling SQLite foreign key support using `PRAGMA foreign_keys = ON`.
-- Returning records ordered by ID using `ORDER BY id`.
-- Introducing a whitelist of updateable fields before generating SQL.
-- Dynamically generating `UPDATE` statements so only modified fields were written to the database.
-- Centralizing route parameter validation through a reusable helper function.
-- Validating malformed route IDs before querying the database.
+### My implementation
 
-These improvements reduced duplicated code while preserving the original REST API.
+My implementation emphasized readability and explicitness.
 
----
+It included:
 
-## What My Implementation Did Better
-
-My implementation focused on clarity and maintainability.
-
-Key strengths included:
-
-- Clear documentation describing the responsibility of each architectural layer.
-- Explicit SQL statements that are easy to follow.
-- Object-based seed data that is easier to read and modify.
-- Helpful initialization messages during first-time database creation.
-- Straightforward CRUD logic that is easy for another developer or student to understand.
-
-Although my implementation was more verbose, it prioritized readability over abstraction.
-
----
-
-## What Both Implementations Did Equally Well
-
-Both implementations:
-
-- Preserved the original REST API.
-- Used parameterized SQL queries.
-- Automatically created the SQLite database.
-- Created the table only when necessary.
-- Seeded data only when the table was empty.
-- Supported persistent storage across server restarts.
-- Returned the same HTTP status codes.
-- Passed all behavioral tests.
-
-From the perspective of an API client, both implementations behaved identically.
+- Clear documentation describing each architectural layer.
+- Explicit SQL statements rather than dynamically generated SQL.
+- Object-based seed data that is easier to inspect and modify.
+- Initialization logging during first-time database creation.
+- Straightforward CRUD operations that prioritize readability over abstraction.
 
 ---
 
@@ -122,25 +143,32 @@ From the perspective of an API client, both implementations behaved identically.
 
 The prompt intentionally focused on API behavior rather than implementation details.
 
-As a result, the AI independently made several architectural decisions, including:
+As a result, the AI independently decided:
 
-- Database path construction.
-- Use of SQLite pragmas.
-- Dynamic versus fixed SQL updates.
-- Helper function organization.
-- Update field whitelisting.
-- Internal code structure.
+- identifier strategy after deletion
+- malformed-ID handling
+- database path construction
+- SQLite pragmas
+- static versus dynamic SQL updates
+- helper-function organization
+- update-field whitelisting
 
-These differences became visible only after comparing the source code, demonstrating how multiple implementations can satisfy the same API contract while using different internal designs.
+These implementation choices became visible only after comparing the generated source code.
 
 ---
 
 ## Reflection
 
-This comparison demonstrated an important software engineering principle:
+The most valuable outcome of this comparison was not confirming that an AI could generate working SQLite code.
 
-A stable REST API allows the persistence layer to evolve without affecting clients.
+Instead, it demonstrated where two independent implementations naturally converged and where they diverged when the specification intentionally left engineering decisions open.
 
-Although the AI and my implementation differed internally, both preserved the same external behavior.
+Both implementations independently chose the same identifier strategy, providing evidence that `AUTOINCREMENT` was a reasonable default for this migration.
 
-Completing this comparison reinforced the value of separating API behavior from implementation details and showed that software can have multiple correct implementations while making different engineering trade-offs between readability, abstraction, maintainability, and scalability.
+The malformed-ID behavior showed that even a detailed specification leaves legitimate implementation decisions open. Both implementations preserved the same REST API while making different choices for an unspecified edge case.
+
+This exercise reinforced an important software engineering principle:
+
+> A stable API contract allows the underlying implementation to evolve while preserving external behavior.
+
+The comparison also showed that multiple implementations can satisfy the same requirements while making different trade-offs between readability, abstraction, maintainability, and scalability.
