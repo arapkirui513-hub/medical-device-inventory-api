@@ -39,6 +39,12 @@ router.get("/:id", async (req, res, next) => {
   try {
     const id = parseInt(req.params.id, 10);
 
+    if (Number.isNaN(id)) {
+      const error = new Error("Invalid device ID");
+      error.status = 400;
+      return next(error);
+    }
+
     const device = await getDeviceById(id);
 
     if (!device) {
@@ -98,6 +104,12 @@ router.put("/:id", async (req, res, next) => {
   try {
     const id = parseInt(req.params.id, 10);
 
+    if (Number.isNaN(id)) {
+      const error = new Error("Invalid device ID");
+      error.status = 400;
+      return next(error);
+    }
+
     const updatedDevice = await updateDevice(id, req.body);
 
     if (!updatedDevice) {
@@ -117,6 +129,12 @@ router.put("/:id", async (req, res, next) => {
 router.delete("/:id", async (req, res, next) => {
   try {
     const id = parseInt(req.params.id, 10);
+
+    if (Number.isNaN(id)) {
+      const error = new Error("Invalid device ID");
+      error.status = 400;
+      return next(error);
+    }
 
     const success = await deleteDevice(id);
 
