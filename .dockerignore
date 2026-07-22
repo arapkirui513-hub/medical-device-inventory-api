@@ -1,0 +1,32 @@
+# Dependencies
+node_modules
+
+# Environment variables
+.env
+.env.local
+
+# Git
+.git
+.gitignore
+
+# Logs
+npm-debug.log
+*.log
+
+# Database artifacts
+devices.db
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode
+.idea
+
+# Documentation
+README.md
+
+# Docker artifacts
+docker-compose.yml
+compose.yaml
