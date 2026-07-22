@@ -1,9 +1,10 @@
-![Node.js](https://img.shields.io/badge/Node.js-22-green)
-![Express](https://img.shields.io/badge/Express-5.x-black)
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-17-blue)
-![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker)
-
 # Medical Device Inventory API
+
+![CI workflow status passing badge](https://github.com/arapkirui513-hub/medical-device-inventory-api/actions/workflows/ci.yml/badge.svg)
+![Node.js version 22 green badge](https://img.shields.io/badge/Node.js-22-green)
+![Express version 5.x black badge](https://img.shields.io/badge/Express-5.x-black)
+![PostgreSQL version 17 blue badge](https://img.shields.io/badge/PostgreSQL-17-blue)
+![Docker Compose blue badge with Docker logo](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker)
 
 A RESTful backend service for managing medical device inventory, built with **Node.js**, **Express**, **PostgreSQL**, and **Docker**.
 
@@ -345,7 +346,7 @@ docker compose up
 
 4. Retrieved all devices and confirmed the newly created record was still present.
 
-![Persistence Proof](docs/screenshots/persistence-proof.png)
+![Docker compose down and up commands executed in terminal showing medical device records persisted across container restarts, demonstrating data persistence in PostgreSQL Docker volume](docs/screenshots/persistence-proof.png)
 
 ---
 
@@ -365,7 +366,7 @@ docker compose up
 
 Application running with both API and PostgreSQL containers.
 
-![Docker Compose](docs/screenshots/docker-compose-up.png)
+![Terminal output showing docker compose up command successfully launching both API and PostgreSQL containers with corresponding log messages](docs/screenshots/docker-compose-up.png)
 
 ---
 
@@ -373,7 +374,7 @@ Application running with both API and PostgreSQL containers.
 
 Medical devices stored in PostgreSQL.
 
-![Database Browser](docs/screenshots/database-browser.png)
+![PostgreSQL database browser displaying devices table with three sample medical devices including Infusion Pump, Ultrasound Machine, and X-Ray System with their respective models, manufacturers, locations, and status information](docs/screenshots/database-browser.png)
 
 ---
 
@@ -381,7 +382,7 @@ Medical devices stored in PostgreSQL.
 
 Retrieving all devices from the PostgreSQL API.
 
-![GET Devices](docs/screenshots/get-devices.png)
+![HTTP GET request to localhost 3000 devices endpoint returning JSON array of medical devices with complete device details including IDs, names, models, manufacturers, locations, active status, and service dates](docs/screenshots/get-devices.png)
 
 ---
 
