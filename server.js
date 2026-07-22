@@ -1,32 +1,53 @@
-// server.js
+/**
+ * server.js
+ *
+ * Responsibilities:
+ * - Initialize the database
+ * - Configure Express
+ * - Register middleware and routes
+ * - Start the HTTP server
+ */
+
+require("dotenv").config();
+
 const express = require("express");
 const devicesRouter = require("./routes/devices");
 const logger = require("./middleware/logger");
 const errorHandler = require("./middleware/errorHandler");
 
-// Initialize the SQLite database
-require("./data/db");
+const { initializeDatabase } = require("./data/db");
 
 const app = express();
 
 // Core middleware
-app.use(express.json());          // Parse JSON request bodies
-app.use(logger);                  // Custom request logger
+app.use(express.json());
+app.use(logger);
 
-// Health-check route
-app.get('/', (req, res) => {
-  res.json({ message: 'Medical Device API is running' });
+// Health check
+app.get("/", (req, res) => {
+  res.json({ message: "Medical Device API is running" });
 });
 
-// Devices routes (mounted under /devices)
-app.use('/devices', devicesRouter);
+// Routes
+app.use("/devices", devicesRouter);
 
-// Error handling middleware (should be last)
+// Error handler (must be last)
 app.use(errorHandler);
 
-// Use environment port if available, else 3000
 const PORT = process.env.PORT || 3000;
 
-app.listen(PORT, () => {
-  console.log(`Server listening on port ${PORT}`);
-});
+// Start the application only after the database is ready
+async function startServer() {
+  try {
+    await initializeDatabase();
+
+    app.listen(PORT, () => {
+      console.log(`Server listening on port ${PORT}`);
+    });
+  } catch (error) {
+    console.error("Failed to start server:", error);
+    process.exit(1);
+  }
+}
+
+startServer();

@@ -1,5 +1,17 @@
-// routes/devices.js
+/**
+ * Routes Layer
+ *
+ * Responsibilities:
+ * - Receive HTTP requests
+ * - Validate input
+ * - Call the data layer
+ * - Return HTTP responses
+ *
+ * This layer does not know how the database works.
+ */
+
 const express = require("express");
+
 const {
   getAllDevices,
   getDeviceById,
@@ -10,90 +22,114 @@ const {
 
 const router = express.Router();
 
-// GET /devices – list all devices
-router.get("/", (req, res) => {
-  const devices = getAllDevices();
-  res.json(devices);
+// ---------- GET ALL DEVICES ----------
+
+router.get("/", async (req, res, next) => {
+  try {
+    const devices = await getAllDevices();
+    res.json(devices);
+  } catch (error) {
+    next(error);
+  }
 });
 
-// GET /devices/:id – retrieve one device
-router.get("/:id", (req, res, next) => {
-  const id = parseInt(req.params.id, 10);
-  const device = getDeviceById(id);
+// ---------- GET DEVICE BY ID ----------
 
-  if (!device) {
-    const error = new Error("Device not found");
-    error.status = 404;
-    return next(error);
+router.get("/:id", async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+
+    const device = await getDeviceById(id);
+
+    if (!device) {
+      const error = new Error("Device not found");
+      error.status = 404;
+      return next(error);
+    }
+
+    res.json(device);
+  } catch (error) {
+    next(error);
   }
-
-  res.json(device);
 });
 
-// POST /devices – add a device
-router.post("/", (req, res, next) => {
-  const {
-    name,
-    model,
-    manufacturer,
-    location,
-    status,
-    lastServiceDate,
-  } = req.body;
+// ---------- CREATE DEVICE ----------
 
-  // Validate required fields
-  if (!name || !model || !manufacturer) {
-    const error = new Error("name, model, and manufacturer are required");
-    error.status = 400;
-    return next(error);
+router.post("/", async (req, res, next) => {
+  try {
+    const {
+      name,
+      model,
+      manufacturer,
+      location,
+      status,
+      lastServiceDate,
+    } = req.body;
+
+    if (!name || !model || !manufacturer) {
+      const error = new Error(
+        "name, model, and manufacturer are required"
+      );
+      error.status = 400;
+      return next(error);
+    }
+
+    const newDevice = {
+      name,
+      model,
+      manufacturer,
+      location: location || "Unknown",
+      status: status || "active",
+      lastServiceDate:
+        lastServiceDate || new Date().toISOString().slice(0, 10),
+    };
+
+    const createdDevice = await addDevice(newDevice);
+
+    res.status(201).json(createdDevice);
+  } catch (error) {
+    next(error);
   }
-
-  // Build the device object.
-  // SQLite generates the ID.
-  const newDevice = {
-    name,
-    model,
-    manufacturer,
-    location: location || "Unknown",
-    status: status || "active",
-    lastServiceDate:
-      lastServiceDate || new Date().toISOString().slice(0, 10),
-  };
-
-  // Store in SQLite and return the created record
-  const createdDevice = addDevice(newDevice);
-
-  res.status(201).json(createdDevice);
 });
 
-// PUT /devices/:id – update a device
-router.put("/:id", (req, res, next) => {
-  const id = parseInt(req.params.id, 10);
-  const updates = req.body;
+// ---------- UPDATE DEVICE ----------
 
-  const updatedDevice = updateDevice(id, updates);
+router.put("/:id", async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id, 10);
 
-  if (!updatedDevice) {
-    const error = new Error("Device not found");
-    error.status = 404;
-    return next(error);
+    const updatedDevice = await updateDevice(id, req.body);
+
+    if (!updatedDevice) {
+      const error = new Error("Device not found");
+      error.status = 404;
+      return next(error);
+    }
+
+    res.json(updatedDevice);
+  } catch (error) {
+    next(error);
   }
-
-  res.json(updatedDevice);
 });
 
-// DELETE /devices/:id – remove a device
-router.delete("/:id", (req, res, next) => {
-  const id = parseInt(req.params.id, 10);
-  const success = deleteDevice(id);
+// ---------- DELETE DEVICE ----------
 
-  if (!success) {
-    const error = new Error("Device not found");
-    error.status = 404;
-    return next(error);
+router.delete("/:id", async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+
+    const success = await deleteDevice(id);
+
+    if (!success) {
+      const error = new Error("Device not found");
+      error.status = 404;
+      return next(error);
+    }
+
+    res.status(204).send();
+  } catch (error) {
+    next(error);
   }
-
-  res.status(204).send();
 });
 
 module.exports = router;

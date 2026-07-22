@@ -2,103 +2,145 @@
  * Data Layer
  *
  * Responsibilities:
- * - Execute SQL queries
+ * - Execute PostgreSQL queries
  * - Persist and retrieve medical devices
  *
  * This layer owns persistence only.
  * It does not contain HTTP logic or business rules.
  */
 
-const db = require("./db");
+const { pool } = require("./db");
+
+// Reusable SELECT clause that preserves the API contract
+const DEVICE_SELECT = `
+SELECT
+  id,
+  name,
+  model,
+  manufacturer,
+  location,
+  status,
+  lastservicedate AS "lastServiceDate"
+FROM devices
+`;
 
 // ---------- READ ----------
 
-function getAllDevices() {
-  return db.prepare("SELECT * FROM devices").all();
+async function getAllDevices() {
+  const result = await pool.query(`
+    ${DEVICE_SELECT}
+    ORDER BY id
+  `);
+
+  return result.rows;
 }
 
-function getDeviceById(id) {
-  return db.prepare("SELECT * FROM devices WHERE id = ?").get(id);
+async function getDeviceById(id) {
+  const result = await pool.query(
+    `
+    ${DEVICE_SELECT}
+    WHERE id = $1
+    `,
+    [id]
+  );
+
+  return result.rows[0] || null;
 }
 
 // ---------- CREATE ----------
 
-function addDevice(device) {
-  const insert = db.prepare(`
-    INSERT INTO devices (
+async function addDevice(device) {
+  const result = await pool.query(
+    `
+    INSERT INTO devices
+    (
       name,
       model,
       manufacturer,
       location,
       status,
-      lastServiceDate
+      lastservicedate
     )
-    VALUES (?, ?, ?, ?, ?, ?)
-  `);
-
-  const result = insert.run(
-    device.name,
-    device.model,
-    device.manufacturer,
-    device.location,
-    device.status,
-    device.lastServiceDate
+    VALUES ($1, $2, $3, $4, $5, $6)
+    RETURNING
+      id,
+      name,
+      model,
+      manufacturer,
+      location,
+      status,
+      lastservicedate AS "lastServiceDate"
+    `,
+    [
+      device.name,
+      device.model,
+      device.manufacturer,
+      device.location,
+      device.status,
+      device.lastServiceDate,
+    ]
   );
 
-  // Return the row exactly as SQLite stored it,
-  // including the database-generated ID.
-  return db
-    .prepare("SELECT * FROM devices WHERE id = ?")
-    .get(result.lastInsertRowid);
+  return result.rows[0];
 }
 
 // ---------- UPDATE ----------
 
-function updateDevice(id, updates) {
-  // Check whether the device exists
-  const existingDevice = getDeviceById(id);
+async function updateDevice(id, updates) {
+  const existingDevice = await getDeviceById(id);
 
   if (!existingDevice) {
     return null;
   }
 
-  // Merge existing values with incoming updates
   const updatedDevice = {
     ...existingDevice,
     ...updates,
   };
 
-  db.prepare(`
+  const result = await pool.query(
+    `
     UPDATE devices
     SET
-      name = ?,
-      model = ?,
-      manufacturer = ?,
-      location = ?,
-      status = ?,
-      lastServiceDate = ?
-    WHERE id = ?
-  `).run(
-    updatedDevice.name,
-    updatedDevice.model,
-    updatedDevice.manufacturer,
-    updatedDevice.location,
-    updatedDevice.status,
-    updatedDevice.lastServiceDate,
-    id
+      name = $1,
+      model = $2,
+      manufacturer = $3,
+      location = $4,
+      status = $5,
+      lastservicedate = $6
+    WHERE id = $7
+    RETURNING
+      id,
+      name,
+      model,
+      manufacturer,
+      location,
+      status,
+      lastservicedate AS "lastServiceDate"
+    `,
+    [
+      updatedDevice.name,
+      updatedDevice.model,
+      updatedDevice.manufacturer,
+      updatedDevice.location,
+      updatedDevice.status,
+      updatedDevice.lastServiceDate,
+      id,
+    ]
   );
 
-  return getDeviceById(id);
+  return result.rows[0];
 }
 
 // ---------- DELETE ----------
 
-function deleteDevice(id) {
-  const result = db
-    .prepare("DELETE FROM devices WHERE id = ?")
-    .run(id);
+async function deleteDevice(id) {
+  const result = await pool.query(
+    "DELETE FROM devices WHERE id = $1",
+    [id]
+  );
 
-  return result.changes > 0;
+  return result.rowCount > 0;
 }
 
 module.exports = {
