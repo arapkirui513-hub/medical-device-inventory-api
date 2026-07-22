@@ -418,35 +418,79 @@ This project demonstrates:
 
 ---
 
-# AI Assistance vs. My Contributions
+# AI Implementation Comparison
 
-AI was used as a development assistant throughout this project. Final implementation decisions, debugging, testing, and validation were completed by me.
+To evaluate AI-generated code, I created a separate implementation using a single prompt and saved it in the `ai-version/` directory. I then compared the generated implementation with my final project by reviewing the generated code and attempting to run both implementations independently using Docker Compose.
 
-## Prompt Used
+## Prompt
 
-> Help me migrate an Express.js REST API from SQLite to PostgreSQL, containerize it with Docker Compose, and preserve the existing layered architecture and API behavior.
+> Build a REST API for managing medical devices using Node.js and Express. Store the data in PostgreSQL running in Docker. Use Docker Compose to start both the API and database. Read configuration from environment variables, create the database table automatically if it does not exist, seed sample data on first run, and implement CRUD endpoints for creating, retrieving, updating, and deleting devices.
 
-## My Contributions
+---
 
-- Migrated the application from SQLite to PostgreSQL while preserving the existing route layer and API contract.
-- Installed and configured Docker Desktop, WSL, PostgreSQL, and Docker Compose on Windows.
-- Diagnosed and resolved Docker and PostgreSQL startup issues, including container initialization failures and connection errors.
-- Refactored the repository layer to preserve camelCase API responses while using PostgreSQL.
-- Fixed the `PUT` update logic after identifying field-name mismatches during testing.
-- Fixed invalid ID handling by returning `400 Bad Request` instead of allowing PostgreSQL to throw an exception.
-- Updated the error handler to match the assignment specification and prevent internal database errors from being exposed to API consumers.
-- Verified CRUD functionality, Docker persistence, and PostgreSQL integration through end-to-end testing.
-- Wrote the project documentation, architecture diagrams, setup instructions, and usage examples.
+## Comparison
 
-## How AI Helped
+| Area | AI Implementation | Final Implementation |
+|------|-------------------|----------------------|
+| Database | Generated a PostgreSQL container but the application still imported `better-sqlite3`, preventing the API from starting. | Fully migrated from SQLite to PostgreSQL using the `pg` driver. |
+| Application Startup | API container exited during startup with a missing dependency (`better-sqlite3`). | API connected successfully to PostgreSQL and started normally. |
+| Validation | Could not be verified because the API failed before serving requests. | Validates invalid route parameters and returns `400 Bad Request` for malformed IDs. |
+| Error Responses | Not verified because the application did not start. | Returns consistent JSON error responses that match the assignment specification. |
+| Testing | Runtime testing could not be completed due to the startup failure. | Successfully tested all CRUD endpoints, Docker deployment, and data persistence. |
 
-AI accelerated development by:
+---
 
-- Explaining PostgreSQL integration.
-- Suggesting Docker and Docker Compose configuration.
-- Reviewing architecture decisions.
-- Identifying potential improvements during code review.
-- Assisting with README structure and documentation.
+## Key Differences
+
+### 1. Database Migration
+
+The AI-generated project created a PostgreSQL container but did not complete the migration from SQLite. During startup the application failed with:
+
+```text
+Error: Cannot find module 'better-sqlite3'
+```
+
+The final implementation replaces SQLite completely with PostgreSQL using the `pg` library.
+
+---
+
+### 2. Runtime Validation
+
+The AI-generated implementation could not be exercised because the API exited during startup.
+
+The final implementation was tested successfully and supports:
+
+- Automatic database initialization
+- One-time seed data
+- Complete CRUD operations
+- Docker Compose deployment
+- Persistent PostgreSQL storage
+
+---
+
+### 3. Request Validation
+
+During development, I identified that invalid IDs (for example, `GET /devices/abc`) produced a database error.
+
+The final implementation validates route parameters before executing database queries and returns:
+
+```http
+HTTP/1.1 400 Bad Request
+
+{
+  "error": "Invalid device ID"
+}
+```
+
+This prevents invalid input from reaching PostgreSQL and matches the assignment's required error format.
+
+---
+
+## Reflection
+
+The comparison showed that AI-generated code can provide a useful starting point but still requires careful validation. While the generated implementation produced much of the project structure, it contained dependency and runtime issues that prevented the application from starting successfully.
+
+Completing the project required debugging, testing, validating Docker configuration, refining error handling, and verifying the application through end-to-end testing. The final implementation reflects those engineering decisions rather than relying solely on generated code.
 
 ---
 
